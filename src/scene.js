@@ -105,10 +105,13 @@ export class FlightScene{
     this.setLabParameters(this.labParams);
   }
   updateFlow(dt){
+    // In laboratorium / wind-tunnel mode the aircraft is treated as stationary,
+    // so the incoming airflow must move from the nose (front, +Z) toward the tail (rear, -Z).
+    // Older builds moved tracers from belakang ke depan, which was visually reversed.
     const flow=Math.max(5,this.labParams.speed+this.labParams.wind);
     for(const t of this.flowParticles){
       t.phase=(t.phase+dt*flow/38)%1;
-      const z=-22+t.phase*44;
+      const z=22-t.phase*44;
       let y=t.y;
       if(Math.abs(t.x)>1 && Math.abs(t.x)<5.8){
         const around=Math.max(0,1-Math.abs(z)/9);
