@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#081423" />
+  <meta name="description" content="Aerodynamics Flight Lab 3D: simulator penerbangan realistis dan laboratorium fisika fluida gratis, tanpa login." />
+  <title>Aerodynamics Flight Lab 3D — Virtual Physics Lab</title>
+  <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg" />
+  <link rel="stylesheet" href="/styles.css" />
+  <script type="module" src="/src/main.js"></script>
+</head>
+<body>
+  <div id="app">
+    <header class="site-header">
+      <a class="brand" href="/" data-link aria-label="Beranda Aerodynamics Flight Lab">
+        <span class="brand-mark">✈</span>
+        <span class="brand-text">AERO<span>LAB</span><small>FLIGHT SIMULATOR 3D</small></span>
+      </a>
+      <nav class="desktop-nav" id="mainNav" aria-label="Navigasi utama">
+        <a href="/" data-link data-nav="home">Beranda</a>
+        <a href="/simulator" data-link data-nav="simulator">Simulator</a>
+        <a href="/laboratorium" data-link data-nav="laboratorium">Laboratorium</a>
+        <a href="/materi" data-link data-nav="materi">Materi</a>
+        <a href="/panduan" data-link data-nav="panduan">Panduan</a>
+      </nav>
+      <div class="header-actions"><span class="online-pill"><i></i> SISTEM SIAP</span><button class="mobile-menu icon-button" id="mobileMenu" aria-label="Buka menu">☰</button></div>
+    </header>
+    <main id="page" tabindex="-1"><div class="loading-shell"><div class="spinner"></div><p>Menyiapkan laboratorium virtual...</p></div></main>
+    <footer class="footer"><span>© 2026 Aerodynamics Flight Lab 3D</span><span>Media pembelajaran fisika · Babylon.js · Tanpa login</span></footer>
+  </div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
