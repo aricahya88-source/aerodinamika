@@ -10,3 +10,6 @@
 
 8. Panel Model A380 akan memuat GLB amvlab CC BY 4.0 via CDN; pilih GLB AEROLAB lokal jika tidak berhasil. Unduh opsional ke folder lokal dengan `bash DOWNLOAD_A380_GLB_MAC.command` (di Mac yang terkoneksi internet).
 9. Selalu cantumkan atribusi amvlab dalam publikasi model komunitas: https://github.com/amvlab/aircraft-models dan lisensi https://creativecommons.org/licenses/by/4.0/ .
+
+## Pembaruan Model A380
+GLB Brout pengguna sudah dibundel di `assets/models/airbus_a380.glb` dan dipilih secara default; tidak perlu menjalankan skrip download. Tombol Aliran Udara ON tersedia di simulator dan wind tunnel.

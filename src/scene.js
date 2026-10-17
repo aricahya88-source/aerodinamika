@@ -2,6 +2,7 @@ import {FlightModel,labCalculation,DEFAULT_LAB,AIRCRAFT} from './physics.js';
 import {rotate,rad,V} from './math.js';
 import {createWorld} from './world.js';
 import {createAircraftWithGLB} from './glb-aircraft.js';
+import {createAirflow} from './airflow.js';
 
 const asB=(v)=>new window.BABYLON.Vector3(v.x,v.y,v.z);
 const hue={lift:'#4ae5bb',drag:'#fc9070',thrust:'#f4cc74',weight:'#88baff'};
@@ -34,6 +35,7 @@ export class FlightScene{
     }else{
       this.setupLabScene();
     }
+    this.airflow=createAirflow(this.scene,this.aircraft.root);
     this.createForceGraphics();this.lastForce=0;
     this.initPointerControls();
     this.lastFrame=performance.now();
@@ -50,10 +52,11 @@ export class FlightScene{
               this.model.step(1/60);this.accum-=1/60;loops++;
             }
             this.syncFlight(dt);
+            this.airflow.update(dt,this.model.last.airspeed,this.model.last.alpha);
             this.world.update(dt,this.elapsed);
           }else{
             this.aircraft.update({throttle:.65,pitch:0,roll:0,yaw:0,flap:this.labParams.flap},dt);
-            this.updateFlow(dt);
+            this.airflow.update(dt,Math.max(0,this.labParams.speed+this.labParams.wind),this.labParams.alpha);
           }
         }
         if(this.showForces && now-this.lastForce>90){this.updateForces();this.lastForce=now;}
@@ -87,15 +90,6 @@ export class FlightScene{
     this.camera.attachControl(this.canvas,true);
     this.camera.keysUp=[];this.camera.keysDown=[];this.camera.keysLeft=[];this.camera.keysRight=[];
     this.scene.activeCamera=this.camera;
-    this.flowParticles=[];
-    const flowMat=new B.StandardMaterial('Airflow cyan',scene);
-    flowMat.emissiveColor=B.Color3.FromHexString('#65e6ea');flowMat.disableLighting=true;flowMat.alpha=.76;
-    const base=B.MeshBuilder.CreateSphere('Flow tracer base',{diameter:.12,segments:5},scene);base.material=flowMat;
-    for(let i=0;i<112;i++){
-      const dot=base.createInstance('Air tracer '+i);
-      this.flowParticles.push({mesh:dot,phase:Math.random(),x:(Math.random()-.5)*88,y:(Math.random()-.5)*15});
-    }
-    base.position.set(0,-10000,0);
     this.labDecor=[];
     const ringMat=new B.StandardMaterial('Tunnel rings',scene);ringMat.emissiveColor=B.Color3.FromHexString('#236077');ringMat.alpha=.3;
     for(const z of [-62,-20,20,62]){
@@ -103,23 +97,6 @@ export class FlightScene{
       torus.position.set(0,20,z);torus.rotation.x=Math.PI/2;torus.material=ringMat;this.labDecor.push(torus);
     }
     this.setLabParameters(this.labParams);
-  }
-  updateFlow(dt){
-    // In laboratorium / wind-tunnel mode the aircraft is treated as stationary,
-    // so the incoming airflow must move from the nose (front, +Z) toward the tail (rear, -Z).
-    // Older builds moved tracers from belakang ke depan, which was visually reversed.
-    const flow=Math.max(5,this.labParams.speed+this.labParams.wind);
-    for(const t of this.flowParticles){
-      t.phase=(t.phase+dt*flow/160)%1;
-      const z=80-t.phase*160;
-      let y=t.y;
-      if(Math.abs(t.x)>2 && Math.abs(t.x)<43){
-        const around=Math.max(0,1-Math.abs(z)/75);
-        y+=around*(6+this.labParams.alpha*.12);
-      }
-      t.mesh.position.set(t.x,20+y,z);
-      t.mesh.scaling.set(1.5,1.5,2.5+flow/40);
-    }
   }
   createForceGraphics(){
     this.forceLines={};
@@ -204,12 +181,13 @@ export class FlightScene{
     }
   }
   setForces(value){this.showForces=value;this.updateForces();}
+  setAirflow(value){this.airflow?.setVisible(value);return this.airflow?.visible??false;}
   setQuality(value){this.engine?.setHardwareScalingLevel(value==='low'?2:value==='medium'?1.35:1);this.engine?.resize();}
   togglePause(){this.paused=!this.paused;return this.paused;}
   reset(){this.model.reset();this.accum=0;this.paused=false;}
   telemetry(){return this.mode==='lab'?labCalculation(this.labParams):this.model.telemetry();}
   dispose(){
-    this.interactions.forEach(fn=>fn());this.interactions=[];this.aircraft?.dispose?.();
+    this.interactions.forEach(fn=>fn());this.interactions=[];this.airflow?.dispose();this.aircraft?.dispose?.();
     if(this.resize)window.removeEventListener('resize',this.resize);
     try{this.engine?.stopRenderLoop(this.frame);this.scene?.dispose();this.engine?.dispose();}catch(e){console.warn('Scene cleanup',e);}
   }

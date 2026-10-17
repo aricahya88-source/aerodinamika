@@ -32,7 +32,7 @@ function render(){
   $('mainNav').classList.remove('open');
   document.title=(route==='experiment'?lab.title:{simulator:'Flight Simulator 3D',laboratorium:'Laboratorium Fluida',papercraft:'A380 Papercraft Studio',materi:'Materi Aerodinamika',panduan:'Panduan',hasil:'Riwayat Praktikum'}[route]||'Beranda')+' | Aerodynamics Flight Lab';
   if(route==='simulator')initSimulator();
-  if(route==='papercraft'){initPapercraft({listen,notice});void attachScene('papercraftCanvas',{mode:'lab'}).then(scene=>{if(!scene)return;scene.setForces(false);bindModelSelector(scene,'paperModelSelect','paperGlbUpload');});}
+  if(route==='papercraft'){initPapercraft({listen,notice});void attachScene('papercraftCanvas',{mode:'lab'}).then(scene=>{if(!scene)return;scene.setForces(false);scene.setAirflow(false);bindModelSelector(scene,'paperModelSelect','paperGlbUpload');});}
   if(route==='experiment')initExperiment(lab);
   if(route==='hasil')initResults();
 }
@@ -103,6 +103,7 @@ async function initSimulator(){
   const cycleCamera=()=>{cameraIndex=(cameraIndex+1)%cameras.length;s.setCamera(cameras[cameraIndex]);sel('cameraName').textContent=cameras[cameraIndex].toUpperCase();notice('Kamera: '+cameras[cameraIndex]);};
   const cycleFlap=()=>{const v=(s.model.controls.flap+10)%40;s.setControl('flap',v);sel('flapLabel').textContent=v+'°';notice('Flap '+v+'°');};
   const toggleVectors=()=>{s.setForces(!s.showForces);sel('vectorButton').classList.toggle('active',s.showForces);notice('Vektor gaya '+(s.showForces?'ditampilkan':'disembunyikan'));};
+  const toggleAirflow=()=>{const on=s.setAirflow(!s.airflow.visible);sel('airflowButton').textContent='≈ ALIRAN '+(on?'ON':'OFF');sel('airflowButton').classList.toggle('active',on);notice('Aliran udara '+(on?'ditampilkan':'disembunyikan'));};
   const togglePause=()=>{const pause=s.togglePause();sel('pauseButton').textContent=pause?'▶ LANJUT':'Ⅱ PAUSE';notice(pause?'Simulasi dihentikan sementara':'Simulasi dilanjutkan');};
   const applyWeather=()=>{
     const settings={weather:sel('weatherSelect').value,windSpeed:+sel('windSpeed').value,windDirection:+sel('windDirection').value,turbulence:+sel('turbulence').value};
@@ -116,6 +117,7 @@ async function initSimulator(){
   listen(sel('audioButton'),'click',async()=>{try{if(sound.active){await sound.stop();sel('audioButton').textContent='♫ SUARA OFF';}else{await sound.start();sel('audioButton').textContent='♫ SUARA ON';}}catch(e){notice('Audio tidak dapat diaktifkan: '+e.message);}});
   listen(sel('flapButton'),'click',cycleFlap);
   listen(sel('vectorButton'),'click',toggleVectors);
+  listen(sel('airflowButton'),'click',toggleAirflow);
   listen(sel('pauseButton'),'click',togglePause);
   listen(sel('resetButton'),'click',()=>{s.reset();setThrottle(35);sel('flapLabel').textContent='15°';sel('pauseButton').textContent='Ⅱ PAUSE';applyWeather();notice('Pesawat kembali ke landasan');});
   for(const el of document.querySelectorAll('[data-hold]')){
@@ -124,7 +126,7 @@ async function initSimulator(){
     const release=()=>{pressed.delete(key);liveControl();el.classList.remove('pressed');};
     listen(el,'pointerup',release);listen(el,'pointercancel',release);listen(el,'lostpointercapture',release);
   }
-  const mapped=new Set(['arrowup','arrowdown','a','d','q','e','b','shift','control','f','c','p','v','r']);
+  const mapped=new Set(['arrowup','arrowdown','a','d','q','e','b','shift','control','f','c','p','v','l','r']);
   const isTyping=e=>e.target instanceof HTMLElement&&!!e.target.closest('input,textarea,select,[contenteditable]');
   listen(window,'keydown',e=>{
     if(isTyping(e))return;
@@ -132,7 +134,7 @@ async function initSimulator(){
     e.preventDefault();
     const isFirst=!pressed.has(key);pressed.add(key);liveControl();
     if(!isFirst)return;
-    if(key==='f')cycleFlap();if(key==='c')cycleCamera();if(key==='p')togglePause();if(key==='v')toggleVectors();
+    if(key==='f')cycleFlap();if(key==='c')cycleCamera();if(key==='p')togglePause();if(key==='v')toggleVectors();if(key==='l')toggleAirflow();
     if(key==='r'){s.reset();setThrottle(35);sel('flapLabel').textContent='15°';applyWeather();notice('Pesawat di-reset');}
   });
   listen(window,'keyup',e=>{pressed.delete(e.key.toLowerCase());liveControl();});
@@ -213,6 +215,11 @@ async function initExperiment(lab){
       updateUI();
     });
   }
+  listen($('labAirflowButton'),'click',()=>{
+    const on=scene.setAirflow(!scene.airflow.visible);
+    $('labAirflowButton').textContent='≈ ALIRAN: '+(on?'ON':'OFF');
+    $('labAirflowButton').classList.toggle('active',on);
+  });
   listen($('labForceButton'),'click',()=>{
     visible=!visible;scene.setForces(visible);
     $('labForceButton').textContent='↑ VEKTOR: '+(visible?'ON':'OFF');

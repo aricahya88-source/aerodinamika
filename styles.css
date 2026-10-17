@@ -27,3 +27,7 @@
 input[type=file][id$=GlbUpload]{max-width:100%;font-size:11px}
 .model-credit{font-size:11px;line-height:1.55;opacity:.77;margin:8px 0 2px}
 .model-credit a{color:#a7eff5;text-decoration:underline}
+
+/* Strongly visible educational airflow toggle */
+.viewport-tools .glass-btn.active,.viewport-overlay-bottom .glass-btn.active{background:#09677d;outline:1px solid #78f1ff;color:#efffff;box-shadow:0 0 14px #42e3fb52}
+.viewport-overlay-bottom{flex-wrap:wrap;gap:8px}

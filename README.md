@@ -1,3 +1,5 @@
+> PEMBARUAN: lihat [PERBAIKAN_ALIRAN_UDARA_DAN_GLB.md](PERBAIKAN_ALIRAN_UDARA_DAN_GLB.md). Kini memakai file Airbus A380 GLB Brout pengguna sebagai default; partikel aliran terlihat di Simulator dan Laboratorium.
+
 # AEROLAB A380 — Flight Simulator, Laboratorium Fluida & Papercraft Studio
 
 Paket pengembangan website AEROLAB lama (HTML/CSS/JavaScript + Babylon.js). Semua menu lama tetap ada. Menu **A380 Papercraft Studio** ditambahkan di navigasi atas, sekaligus mengganti pesawat prosedural ringan menjadi model Airbus A380-800. Proyek dapat diunggah ke GitHub dan di-deploy ke Netlify tanpa build atau database.

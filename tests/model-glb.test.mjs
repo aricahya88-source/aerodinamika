@@ -16,6 +16,7 @@ test('A380 external model attribution and offline fallback are defined',()=>{
  assert.ok(MODEL_SOURCES.community.url.includes('amvlab'));
  assert.ok(MODEL_SOURCES.bundled.url.endsWith('a380-aerolab.glb'));
  assert.equal(MODEL_SOURCES.procedural.url,null);
+ assert.equal(MODEL_SOURCES.user.url,'/assets/models/airbus_a380.glb');
  assert.equal(typeof MODEL_SOURCE_KEY,'string');
- assert.equal(getModelSource(),'community'); // no localStorage in Node
+ assert.equal(getModelSource(),'user'); // no localStorage in Node
 });

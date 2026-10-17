@@ -1,3 +1,5 @@
+> **Pembaruan 2.2:** file `assets/models/airbus_a380.glb` dari pengguna sudah dibundel sebagai pilihan default. Kredit Brout/Sketchfab CC BY 4.0. Petunjuk di bawah merupakan catatan versi 2.1, lihat `PERBAIKAN_ALIRAN_UDARA_DAN_GLB.md`.
+
 # Panduan Model GLB Airbus A380 — AEROLAB 2.1
 
 ## Pilihan sumber dalam aplikasi

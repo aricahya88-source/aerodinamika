@@ -3,13 +3,14 @@ import {getLivery} from './livery.js';
 
 // The shipped local GLB is an original illustrative A380 mesh (not a real Airbus CAD file).
 // The third-party option is an openly licensed CC-BY 4.0 no-logo A380 by amvlab.
-export const MODEL_SOURCE_KEY='aerolab.a380.visual-model.v1';
+export const MODEL_SOURCE_KEY='aerolab.a380.visual-model.v2';
 export const MODEL_SOURCES=Object.freeze({
   community:{label:'GLB Komunitas — amvlab (CC BY 4.0)',url:'https://cdn.jsdelivr.net/gh/amvlab/aircraft-models@main/models/A380_nologo.glb'},
+  user:{label:'A380 Brout GLB — diunggah pengguna (CC BY 4.0)',url:'/assets/models/airbus_a380.glb'},
   bundled:{label:'GLB bawaan AEROLAB',url:'/assets/models/a380-aerolab.glb'},
   procedural:{label:'Model prosedural AEROLAB',url:null}
 });
-export function getModelSource(){try{const value=localStorage.getItem(MODEL_SOURCE_KEY);return Object.hasOwn(MODEL_SOURCES,value)?value:'community';}catch{return 'community';}}
+export function getModelSource(){try{const value=localStorage.getItem(MODEL_SOURCE_KEY);return Object.hasOwn(MODEL_SOURCES,value)?value:'user';}catch{return 'user';}}
 export function saveModelSource(source){if(!Object.hasOwn(MODEL_SOURCES,source))throw new Error('Sumber model tidak dikenali');try{localStorage.setItem(MODEL_SOURCE_KEY,source);}catch{}return source;}
 let loadersPromise=null;
 function loadGLBPlugin(B){
@@ -102,7 +103,9 @@ export function createAircraftWithGLB(scene,{onStatus=()=>{}}={}){
       const mainAxis=bounds.size.x>=bounds.size.z?'x':'z';
       const span=Math.max(bounds.size.x,bounds.size.z);
       if(span<=0.001)throw Error('Dimensi model GLB tidak valid');
-      const k=79.8/span,turn=mainAxis==='z'?Math.PI/2:0;
+      // Brout's GLB has wings along X and nose along -Z. Turn it toward the simulator's +Z.
+      // Others use a coarse automatic axis normalization; orientation may need manual adjustment.
+      const k=79.8/span,turn=url.includes('airbus_a380.glb')?Math.PI:(mainAxis==='z'?Math.PI/2:0);
       const node=new B.TransformNode('A380 GLB visual root',scene);node.parent=original.root;
       // Keep the nose aligned with local +Z. For assets with a reverse-facing
       // source orientation use the optional orientation setting in the UI.
@@ -127,15 +130,15 @@ export function createAircraftWithGLB(scene,{onStatus=()=>{}}={}){
     }
     const custom=source==='custom';
     if(custom&&!customBlobUrl){announce('Pilih file .glb untuk menggunakan model sendiri','procedural');return;}
-    const sources=custom?[['custom',customBlobUrl]]:source==='bundled'?[['bundled',MODEL_SOURCES.bundled.url]]:[['community','/assets/models/A380_nologo.glb'],['community',MODEL_SOURCES.community.url],['bundled',MODEL_SOURCES.bundled.url]];
+    const sources=custom?[['custom',customBlobUrl]]:source==='user'?[['user',MODEL_SOURCES.user.url],['bundled',MODEL_SOURCES.bundled.url]]:source==='bundled'?[['bundled',MODEL_SOURCES.bundled.url]]:[['community','/assets/models/A380_nologo.glb'],['community',MODEL_SOURCES.community.url],['user',MODEL_SOURCES.user.url],['bundled',MODEL_SOURCES.bundled.url]];
     for(const [id,url] of sources){
       if(dead||request!==call)return;
-      announce(id==='community'?'Mengunduh model A380 GLB komunitas…':id==='bundled'?'Memuat GLB bawaan AEROLAB…':'Memuat GLB pilihan Anda…',activeSource);
+      announce(id==='community'?'Mengunduh model A380 GLB komunitas…':id==='user'?'Memuat Airbus A380 GLB Brout dari ZIP…':id==='bundled'?'Memuat GLB bawaan AEROLAB…':'Memuat GLB pilihan Anda…',activeSource);
       try{
         const result=await attempt(url);
         if(dead||request!==call){result.node.dispose(false,true);destroyAsset(result.result);return;}
         imported=result.result;visualNode=result.node;activeSource=id;showGLB();
-        announce(id==='community'?'A380 GLB amvlab aktif (CC BY 4.0)':id==='custom'?'A380 GLB unggahan Anda aktif':'A380 GLB bawaan AEROLAB aktif',id);
+        announce(id==='community'?'A380 GLB amvlab aktif (CC BY 4.0)':id==='user'?'Airbus A380 Brout GLB aktif (CC BY 4.0)':id==='custom'?'A380 GLB unggahan Anda aktif':'A380 GLB bawaan AEROLAB aktif',id);
         return;
       }catch(error){if(dead||request!==call)return;console.warn('A380 GLB gagal dimuat:',url,error);}
     }
