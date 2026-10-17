@@ -1,4 +1,5 @@
 import {FlightScene} from './scene.js';
+import {MODEL_SOURCES,getModelSource,saveModelSource} from './glb-aircraft.js';
 import {papercraftPage,initPapercraft} from './papercraft.js';
 import {AudioEngine} from './audio.js';
 import {LABS,DEFAULT_LAB,labCalculation} from './physics.js';
@@ -31,7 +32,7 @@ function render(){
   $('mainNav').classList.remove('open');
   document.title=(route==='experiment'?lab.title:{simulator:'Flight Simulator 3D',laboratorium:'Laboratorium Fluida',papercraft:'A380 Papercraft Studio',materi:'Materi Aerodinamika',panduan:'Panduan',hasil:'Riwayat Praktikum'}[route]||'Beranda')+' | Aerodynamics Flight Lab';
   if(route==='simulator')initSimulator();
-  if(route==='papercraft'){initPapercraft({listen,notice});void attachScene('papercraftCanvas',{mode:'lab'}).then(scene=>scene?.setForces(false));}
+  if(route==='papercraft'){initPapercraft({listen,notice});void attachScene('papercraftCanvas',{mode:'lab'}).then(scene=>{if(!scene)return;scene.setForces(false);bindModelSelector(scene,'paperModelSelect','paperGlbUpload');});}
   if(route==='experiment')initExperiment(lab);
   if(route==='hasil')initResults();
 }
@@ -68,7 +69,7 @@ async function attachScene(canvasId,options){
   try{
     await loadBabylon();
     if(!canvas.isConnected)return null;
-    const instance=new FlightScene(canvas,{...options,onError:(e)=>{console.error(e);error.classList.remove('hidden');error.textContent='Terjadi kesalahan rendering: '+e.message;}});
+    const instance=new FlightScene(canvas,{...options,onModelStatus:(message)=>{const badge=canvas.parentElement.querySelector('[data-model-status]');if(badge)badge.textContent=message;},onError:(e)=>{console.error(e);error.classList.remove('hidden');error.textContent='Terjadi kesalahan rendering: '+e.message;}});
     currentScene=instance;return instance;
   }catch(e){
     if(canvas.isConnected){console.error(e);error.classList.remove('hidden');error.textContent=e.message+' Silakan refresh halaman atau coba browser terbaru.';}
@@ -76,9 +77,16 @@ async function attachScene(canvasId,options){
   }finally{loading.remove();}
 }
 
+function bindModelSelector(scene,selectId,uploadId){
+  const select=$(selectId),upload=$(uploadId);if(!select||!scene)return;
+  select.value=getModelSource();
+  listen(select,'change',()=>{const source=saveModelSource(select.value);void scene.aircraft.setModelSource(source);notice('Mengganti visualisasi model A380…');});
+  if(upload)listen(upload,'change',async e=>{const file=e.target.files?.[0];if(!file)return;try{await scene.aircraft.loadCustomFile(file);select.value='custom';notice('File GLB Anda berhasil diproses (periksa status model).');}catch(err){notice('Gagal memuat GLB: '+err.message);}});
+}
 async function initSimulator(){
   const s=await attachScene('flightCanvas',{mode:'flight'});
   if(!s)return;
+  bindModelSelector(s,'flightModelSelect','flightGlbUpload');
   const sel=(id)=>$(id);
   const sound=new AudioEngine();cleanup.push(()=>{void sound.stop();});
   const pressed=new Set();

@@ -1,17 +1,17 @@
 import {FlightModel,labCalculation,DEFAULT_LAB,AIRCRAFT} from './physics.js';
 import {rotate,rad,V} from './math.js';
 import {createWorld} from './world.js';
-import {createAircraft} from './aircraft.js';
+import {createAircraftWithGLB} from './glb-aircraft.js';
 
 const asB=(v)=>new window.BABYLON.Vector3(v.x,v.y,v.z);
 const hue={lift:'#4ae5bb',drag:'#fc9070',thrust:'#f4cc74',weight:'#88baff'};
 export class FlightScene{
-  constructor(canvas,{mode='flight',labParams={},onError=()=>{}}={}){
+  constructor(canvas,{mode='flight',labParams={},onError=()=>{},onModelStatus=()=>{}}={}){
     if(!window.BABYLON)throw new Error('Babylon.js belum berhasil dimuat. Periksa koneksi internet karena engine 3D dimuat dari CDN.');
     this.B=window.BABYLON;this.canvas=canvas;this.mode=mode;this.onError=onError;
     this.paused=false;this.showForces=mode==='lab';this.cameraMode=mode==='lab'?'orbit':'chase';
     this.labParams={...DEFAULT_LAB,...labParams};this.elapsed=0;this.accum=0;this.lastUI=0;
-    this.model=new FlightModel();this.interactions=[];
+    this.model=new FlightModel();this.interactions=[];this.onModelStatus=onModelStatus;
     try{this.setup();}catch(err){this.dispose();throw err;}
   }
   setup(){
@@ -24,7 +24,7 @@ export class FlightScene{
     this.scene.imageProcessingConfiguration.contrast=1.12;
     if(this.mode==='flight'){
       this.world=createWorld(this.scene,'flight');
-      this.aircraft=createAircraft(this.scene);
+      this.aircraft=createAircraftWithGLB(this.scene,{onStatus:this.onModelStatus});
       this.aircraft.root.position.set(0,AIRCRAFT.groundHeight,-1690);
       this.camera=new B.FreeCamera('Pilot camera',new B.Vector3(0,38,-1840),this.scene);
       this.camera.minZ=.1;this.camera.maxZ=6000;this.scene.activeCamera=this.camera;
@@ -80,7 +80,7 @@ export class FlightScene{
     const backMat=new B.StandardMaterial('Wind tunnel backdrop',scene);
     backMat.diffuseColor=B.Color3.FromHexString('#102535');
     const back=B.MeshBuilder.CreatePlane('Backdrop',{width:250,height:120},scene);back.position.set(0,62,122);back.material=backMat;
-    this.aircraft=createAircraft(scene);this.aircraft.root.position.set(0,20,0);
+    this.aircraft=createAircraftWithGLB(scene,{onStatus:this.onModelStatus});this.aircraft.root.position.set(0,20,0);
     this.camera=new B.ArcRotateCamera('Research camera',-Math.PI/2,1.20,155,new B.Vector3(0,20,0),scene);
     this.camera.minZ=.1;this.camera.maxZ=1000;this.camera.lowerRadiusLimit=75;this.camera.upperRadiusLimit=320;
     this.camera.wheelPrecision=30;this.camera.panningSensibility=0;

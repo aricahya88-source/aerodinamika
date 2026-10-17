@@ -30,3 +30,6 @@ Tanggal: 17 Oktober 2026.
 6. Periksa semua tab, garis potong, lipatan, dan uji rakit sebelum menyatakan siap produksi.
 7. Jalankan semua 8 eksperimen dan uji apakah data, grafik, simpan, dan CSV tersedia.
 8. Jalankan 100% throttle, tarik pitch secara bertahap di kisaran 270–310 km/jam; ini simulasi model contoh, bukan prosedur takeoff Airbus nyata.
+
+
+GLB eksternal amvlab memerlukan internet dan tidak disertakan biner di ZIP. GLB bawaan AEROLAB yang ada di ZIP merupakan visualisasi orisinal ilustratif dan berbeda dari model amvlab atau Brout. Sinkronisasi livery GLB dilakukan dengan decal/badge tampilan, bukan UV mapping satu-ke-satu dengan template papercraft.
