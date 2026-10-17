@@ -4,6 +4,7 @@ import {papercraftPage,initPapercraft} from './papercraft.js';
 import {AudioEngine} from './audio.js';
 import {LABS,DEFAULT_LAB,labCalculation} from './physics.js';
 import {plotLab} from './chart.js';
+import {computeAirfoilAnalysis,drawAirfoilPanel} from './airfoil-analysis.js';
 import {getSavedExperiments,saveExperiment,deleteExperiment,downloadText,toCSV,escapeHTML} from './storage.js';
 import {homePage,simulatorPage,labsPage,experimentPage,theoryPage,guidePage,labCard,format} from './ui.js';
 
@@ -77,6 +78,25 @@ async function attachScene(canvasId,options){
   }finally{loading.remove();}
 }
 
+
+function updateAirfoilCard(prefix,analysis){
+  const top=$(prefix+'Top'),bottom=$(prefix+'Bottom'),delta=$(prefix+'Delta'),state=$(prefix+'State');
+  if(top)top.textContent=format(analysis.pressureUpperPa,0)+' Pa';
+  if(bottom)bottom.textContent=format(analysis.pressureLowerPa,0)+' Pa';
+  if(delta)delta.textContent=format(analysis.deltaPressurePa,0)+' Pa';
+  if(state){state.textContent=analysis.stall?'STALL':'NORMAL';state.style.color=analysis.stall?'#fba179':'#4ce7c6';}
+}
+function setPanelVisible(panelId,buttonId,visible,label='AIRFOIL'){
+  const panel=$(panelId),button=$(buttonId); if(panel)panel.classList.toggle('hidden',!visible);
+  if(button){button.classList.toggle('active',visible);button.textContent='◔ '+label+' '+(visible?'ON':'OFF');}
+}
+function renderAirfoil(canvasId,prefix,source){
+  const canvas=$(canvasId); if(!canvas)return null;
+  const analysis=computeAirfoilAnalysis(source);
+  updateAirfoilCard(prefix,analysis); drawAirfoilPanel(canvas,analysis);
+  return analysis;
+}
+
 function bindModelSelector(scene,selectId,uploadId){
   const select=$(selectId),upload=$(uploadId);if(!select||!scene)return;
   select.value=getModelSource();
@@ -104,7 +124,9 @@ async function initSimulator(){
   const cycleFlap=()=>{const v=(s.model.controls.flap+10)%40;s.setControl('flap',v);sel('flapLabel').textContent=v+'°';notice('Flap '+v+'°');};
   const toggleVectors=()=>{s.setForces(!s.showForces);sel('vectorButton').classList.toggle('active',s.showForces);notice('Vektor gaya '+(s.showForces?'ditampilkan':'disembunyikan'));};
   const toggleAirflow=()=>{const on=s.setAirflow(!s.airflow.visible);sel('airflowButton').textContent='≈ ALIRAN '+(on?'ON':'OFF');sel('airflowButton').classList.toggle('active',on);notice('Aliran udara '+(on?'ditampilkan':'disembunyikan'));};
+  let airfoilVisible=true;
   const togglePause=()=>{const pause=s.togglePause();sel('pauseButton').textContent=pause?'▶ LANJUT':'Ⅱ PAUSE';notice(pause?'Simulasi dihentikan sementara':'Simulasi dilanjutkan');};
+  const toggleAirfoil=()=>{airfoilVisible=!airfoilVisible;setPanelVisible('flightAirfoilPanel','airfoilButton',airfoilVisible,'AIRFOIL');notice('Diagram penampang sayap '+(airfoilVisible?'ditampilkan':'disembunyikan'));if(airfoilVisible)requestAnimationFrame(()=>renderAirfoil('flightAirfoilCanvas','flightAirfoil',{alpha:s.model.last.alpha,flap:s.model.controls.flap,speed:s.model.last.airspeed,density:s.model.last.density,cl:s.model.last.cl,dynamicPressure:s.model.last.q}));};
   const applyWeather=()=>{
     const settings={weather:sel('weatherSelect').value,windSpeed:+sel('windSpeed').value,windDirection:+sel('windDirection').value,turbulence:+sel('turbulence').value};
     sel('windSpeedLabel').textContent=settings.windSpeed+' m/s';sel('turbulenceLabel').textContent=settings.turbulence+' / 5';s.setWeather(settings);
@@ -118,6 +140,7 @@ async function initSimulator(){
   listen(sel('flapButton'),'click',cycleFlap);
   listen(sel('vectorButton'),'click',toggleVectors);
   listen(sel('airflowButton'),'click',toggleAirflow);
+  listen(sel('airfoilButton'),'click',toggleAirfoil);
   listen(sel('pauseButton'),'click',togglePause);
   listen(sel('resetButton'),'click',()=>{s.reset();setThrottle(35);sel('flapLabel').textContent='15°';sel('pauseButton').textContent='Ⅱ PAUSE';applyWeather();notice('Pesawat kembali ke landasan');});
   for(const el of document.querySelectorAll('[data-hold]')){
@@ -148,6 +171,7 @@ async function initSimulator(){
     sound.update(t);
     const data={airspeed:format(t.speedKmh,0),mach:format(t.mach,2),thrust:format(t.thrust/1000,0),altitude:format(t.altitude,0),heading:format(t.heading,0).padStart(3,'0'),vertical:format(t.verticalSpeed,1),aoa:format(t.alpha,1),pitch:format(t.pitch,1),bank:format(t.bank,1),lift:format(t.lift/1000,2),drag:format(t.drag/1000,2),load:format(t.loadFactor,2)+' g'};
     for(const [key,value]of Object.entries(data))document.querySelectorAll(`[data-t="${key}"]`).forEach(el=>el.textContent=value);
+    if(airfoilVisible)renderAirfoil('flightAirfoilCanvas','flightAirfoil',{alpha:t.alpha,flap:s.model.controls.flap,speed:t.airspeed,density:t.density,cl:t.cl,dynamicPressure:t.q});
     const alert=sel('flightAlert');if(!alert)return;
     if(t.stall){alert.textContent='⚠ PERINGATAN: STALL — KURANGI SUDUT SERANG';alert.classList.add('warning');}
     else if(t.crash){alert.textContent='⚠ PENYENTUHAN KERAS — RESET UNTUK MENGULANG';alert.classList.add('warning');}
@@ -156,6 +180,8 @@ async function initSimulator(){
   };
   applyWeather();
   setThrottle(35);
+  setPanelVisible('flightAirfoilPanel','airfoilButton',true,'AIRFOIL');
+  requestAnimationFrame(()=>renderAirfoil('flightAirfoilCanvas','flightAirfoil',{alpha:0,flap:15,speed:0,density:1.225,cl:0.23,dynamicPressure:0}));
 }
 const PARAM_CONTROLS={
   speed:{name:'Kecepatan terhadap tanah',unit:'m/s',min:0,max:270,step:5},
@@ -182,7 +208,7 @@ async function initExperiment(lab){
   const p={...DEFAULT_LAB},records=[];
   const scene=await attachScene('labCanvas',{mode:'lab',labParams:p});
   if(!scene)return;
-  let visible=true;
+  let visible=true,airfoilVisible=true;
   const controls=CONTROLS_PER_LAB[lab.id]||['speed','alpha'];
   $('labSliders').innerHTML=controls.map(key=>{
     const spec=PARAM_CONTROLS[key];
@@ -195,7 +221,7 @@ async function initExperiment(lab){
     $('labAir').textContent=format(r.airspeed,1)+' m/s';$('labCD').textContent=format(r.cd,3);
     $('labThrust').textContent=format(r.thrust/1000,2)+' kN';$('labStall').textContent=r.stall?'STALL':'NORMAL';
     $('labStall').style.color=r.stall?'#fba179':'#4ce7c6';
-    scene.setLabParameters(p);drawGraph();
+    scene.setLabParameters(p);drawGraph(); if(airfoilVisible)renderAirfoil('labAirfoilCanvas','labAirfoil',{alpha:p.alpha,flap:p.flap,speed:Math.max(0,p.speed+p.wind),density:r.density,cl:r.cl,dynamicPressure:r.dynamicPressure});
   };
   const plotValue=values=>values[lab.x];
   const drawGraph=()=>{
@@ -220,6 +246,7 @@ async function initExperiment(lab){
     $('labAirflowButton').textContent='≈ ALIRAN: '+(on?'ON':'OFF');
     $('labAirflowButton').classList.toggle('active',on);
   });
+  listen($('labAirfoilButton'),'click',()=>{airfoilVisible=!airfoilVisible;setPanelVisible('labAirfoilPanel','labAirfoilButton',airfoilVisible,'AIRFOIL:');if(airfoilVisible)updateUI();});
   listen($('labForceButton'),'click',()=>{
     visible=!visible;scene.setForces(visible);
     $('labForceButton').textContent='↑ VEKTOR: '+(visible?'ON':'OFF');
@@ -247,6 +274,7 @@ async function initExperiment(lab){
     catch(e){notice('Penyimpanan gagal. Kapasitas penyimpanan browser mungkin penuh.');}
   });
   listen(window,'resize',()=>requestAnimationFrame(drawGraph));
+  setPanelVisible('labAirfoilPanel','labAirfoilButton',true,'AIRFOIL:');
   updateUI();requestAnimationFrame(drawGraph);
 }
 function resultsPage(){
