@@ -25,8 +25,8 @@ export class FlightScene{
     if(this.mode==='flight'){
       this.world=createWorld(this.scene,'flight');
       this.aircraft=createAircraft(this.scene);
-      this.aircraft.root.position.set(0,AIRCRAFT.groundHeight,-370);
-      this.camera=new B.FreeCamera('Pilot camera',new B.Vector3(0,10,-400),this.scene);
+      this.aircraft.root.position.set(0,AIRCRAFT.groundHeight,-1690);
+      this.camera=new B.FreeCamera('Pilot camera',new B.Vector3(0,38,-1840),this.scene);
       this.camera.minZ=.1;this.camera.maxZ=6000;this.scene.activeCamera=this.camera;
       this.camera.fov=.86;
       const shadowList=this.aircraft.root.getChildMeshes();
@@ -71,18 +71,18 @@ export class FlightScene{
     const hemi=new B.HemisphericLight('Lab ambient',new B.Vector3(0,1,0),scene);hemi.intensity=1.3;
     const light=new B.DirectionalLight('Lab softbox',new B.Vector3(-.5,-1,.5),scene);light.intensity=1.7;
     const floorMat=new B.StandardMaterial('Lab floor',scene);floorMat.diffuseColor=B.Color3.FromHexString('#112b3b');
-    const ground=B.MeshBuilder.CreateGround('Wind tunnel base',{width:120,height:140},scene);ground.position.y=-1;ground.material=floorMat;
+    const ground=B.MeshBuilder.CreateGround('Wind tunnel base',{width:250,height:250},scene);ground.position.y=-1;ground.material=floorMat;
     const gridMat=new B.StandardMaterial('Grid',scene);gridMat.emissiveColor=B.Color3.FromHexString('#1f4a5c');gridMat.disableLighting=true;
-    for(let i=-60;i<=60;i+=5){
-      const l=B.MeshBuilder.CreateBox('Reference grid X',{width:120,height:.015,depth:.045},scene);l.position.set(0,-.975,i);l.material=gridMat;
-      const v=B.MeshBuilder.CreateBox('Reference grid Z',{width:.045,height:.015,depth:120},scene);v.position.set(i,-.975,0);v.material=gridMat;
+    for(let i=-120;i<=120;i+=20){
+      const l=B.MeshBuilder.CreateBox('Reference grid X',{width:240,height:.015,depth:.08},scene);l.position.set(0,-.975,i);l.material=gridMat;
+      const v=B.MeshBuilder.CreateBox('Reference grid Z',{width:.08,height:.015,depth:240},scene);v.position.set(i,-.975,0);v.material=gridMat;
     }
     const backMat=new B.StandardMaterial('Wind tunnel backdrop',scene);
     backMat.diffuseColor=B.Color3.FromHexString('#102535');
-    const back=B.MeshBuilder.CreatePlane('Backdrop',{width:120,height:65},scene);back.position.set(0,29,65);back.material=backMat;
-    this.aircraft=createAircraft(scene);this.aircraft.root.position.set(0,13,0);
-    this.camera=new B.ArcRotateCamera('Research camera',-Math.PI/2,1.20,28,new B.Vector3(0,13,0),scene);
-    this.camera.minZ=.1;this.camera.maxZ=1000;this.camera.lowerRadiusLimit=11;this.camera.upperRadiusLimit=80;
+    const back=B.MeshBuilder.CreatePlane('Backdrop',{width:250,height:120},scene);back.position.set(0,62,122);back.material=backMat;
+    this.aircraft=createAircraft(scene);this.aircraft.root.position.set(0,20,0);
+    this.camera=new B.ArcRotateCamera('Research camera',-Math.PI/2,1.20,155,new B.Vector3(0,20,0),scene);
+    this.camera.minZ=.1;this.camera.maxZ=1000;this.camera.lowerRadiusLimit=75;this.camera.upperRadiusLimit=320;
     this.camera.wheelPrecision=30;this.camera.panningSensibility=0;
     this.camera.attachControl(this.canvas,true);
     this.camera.keysUp=[];this.camera.keysDown=[];this.camera.keysLeft=[];this.camera.keysRight=[];
@@ -93,14 +93,14 @@ export class FlightScene{
     const base=B.MeshBuilder.CreateSphere('Flow tracer base',{diameter:.12,segments:5},scene);base.material=flowMat;
     for(let i=0;i<112;i++){
       const dot=base.createInstance('Air tracer '+i);
-      this.flowParticles.push({mesh:dot,phase:Math.random(),x:(Math.random()-.5)*11.5,y:(Math.random()-.5)*3});
+      this.flowParticles.push({mesh:dot,phase:Math.random(),x:(Math.random()-.5)*88,y:(Math.random()-.5)*15});
     }
     base.position.set(0,-10000,0);
     this.labDecor=[];
     const ringMat=new B.StandardMaterial('Tunnel rings',scene);ringMat.emissiveColor=B.Color3.FromHexString('#236077');ringMat.alpha=.3;
-    for(const z of [-19,-6,8,21]){
-      const torus=B.MeshBuilder.CreateTorus('Tunnel hoop',{diameter:27,thickness:.055,tessellation:56},scene);
-      torus.position.set(0,13,z);torus.rotation.x=Math.PI/2;torus.material=ringMat;this.labDecor.push(torus);
+    for(const z of [-62,-20,20,62]){
+      const torus=B.MeshBuilder.CreateTorus('Tunnel hoop',{diameter:110,thickness:.12,tessellation:56},scene);
+      torus.position.set(0,20,z);torus.rotation.x=Math.PI/2;torus.material=ringMat;this.labDecor.push(torus);
     }
     this.setLabParameters(this.labParams);
   }
@@ -110,15 +110,15 @@ export class FlightScene{
     // Older builds moved tracers from belakang ke depan, which was visually reversed.
     const flow=Math.max(5,this.labParams.speed+this.labParams.wind);
     for(const t of this.flowParticles){
-      t.phase=(t.phase+dt*flow/38)%1;
-      const z=22-t.phase*44;
+      t.phase=(t.phase+dt*flow/160)%1;
+      const z=80-t.phase*160;
       let y=t.y;
-      if(Math.abs(t.x)>1 && Math.abs(t.x)<5.8){
-        const around=Math.max(0,1-Math.abs(z)/9);
-        y+=around*(1.3+this.labParams.alpha*.065);
+      if(Math.abs(t.x)>2 && Math.abs(t.x)<43){
+        const around=Math.max(0,1-Math.abs(z)/75);
+        y+=around*(6+this.labParams.alpha*.12);
       }
-      t.mesh.position.set(t.x,13+y,z);
-      t.mesh.scaling.set(.8,.8,1.2+flow/60);
+      t.mesh.position.set(t.x,20+y,z);
+      t.mesh.scaling.set(1.5,1.5,2.5+flow/40);
     }
   }
   createForceGraphics(){
@@ -141,8 +141,8 @@ export class FlightScene{
     const lab=this.mode==='lab';
     const calc=lab?labCalculation(this.labParams):this.model.last;
     const lift=calc.lift,drag=calc.drag,thrust=calc.thrust,weight=AIRCRAFT.mass*9.80665;
-    const max=lab?15000:Math.max(9000,lift,drag,thrust);
-    const mag=(n)=>2.5+Math.min(12,Math.abs(n)/Math.max(max,1)*10);
+    const max=lab?Math.max(1e6,lift,drag,thrust):Math.max(1e6,lift,drag,thrust);
+    const mag=(n)=>8+Math.min(25,Math.abs(n)/Math.max(max,1)*22);
     const center=new B.Vector3(a.x,a.y,a.z);
     const vectors={
       lift:lab?new B.Vector3(0,mag(lift),0):planeLocal(0,mag(lift),0),
@@ -168,14 +168,14 @@ export class FlightScene{
     const targetRoot=new B.Vector3(pos.x,pos.y,pos.z);
     let wanted,point;
     if(this.cameraMode==='cockpit'){
-      const eye=rotate(V(0,.64,1.35),m.quaternion);
-      const look=rotate(V(0,.6,55),m.quaternion);
+      const eye=rotate(V(0,2.5,32),m.quaternion);
+      const look=rotate(V(0,2.5,160),m.quaternion);
       wanted=targetRoot.add(asB(eye));point=targetRoot.add(asB(look));
     }else{
-      const distance=this.zoom||29;
-      const offset=this.cameraMode==='side'?V(distance*.85,9,-distance*.5):this.cameraMode==='top'?V(0,distance*1.1,-distance*.35):V(Math.sin(this.orbitYaw||0)*distance,8+Math.sin(this.orbitPitch||0)*8,-Math.cos(this.orbitYaw||0)*distance);
+      const distance=this.zoom||155;
+      const offset=this.cameraMode==='side'?V(distance*.85,45,-distance*.5):this.cameraMode==='top'?V(0,distance*1.1,-distance*.35):V(Math.sin(this.orbitYaw||0)*distance,35+Math.sin(this.orbitPitch||0)*28,-Math.cos(this.orbitYaw||0)*distance);
       wanted=targetRoot.add(asB(rotate(offset,m.quaternion)));
-      point=targetRoot.add(asB(rotate(V(0,1.1,5),m.quaternion)));
+      point=targetRoot.add(asB(rotate(V(0,2,14),m.quaternion)));
     }
     const smoothing=this.cameraMode==='cockpit'?1:Math.min(1,dt*4.2);
     if(this.model.turbulence>0 && this.cameraMode==='chase'){const t=this.elapsed,a=this.model.turbulence*.025;wanted.x+=Math.sin(t*8.3)*a;wanted.y+=Math.sin(t*11.5)*a;}
@@ -188,7 +188,7 @@ export class FlightScene{
     const down=(e)=>{if(e.button!==0)return;held=true;lastX=e.clientX;lastY=e.clientY;};
     const move=(e)=>{if(!held)return;this.orbitYaw=(this.orbitYaw||0)+(e.clientX-lastX)*.005;this.orbitPitch=Math.max(-.5,Math.min(.85,(this.orbitPitch||0)+(e.clientY-lastY)*-.005));lastX=e.clientX;lastY=e.clientY;};
     const up=()=>held=false;
-    const wheel=(e)=>{if(e.cancelable)e.preventDefault();this.zoom=Math.max(10,Math.min(90,(this.zoom||29)+Math.sign(e.deltaY)*2));};
+    const wheel=(e)=>{if(e.cancelable)e.preventDefault();this.zoom=Math.max(70,Math.min(400,(this.zoom||155)+Math.sign(e.deltaY)*12));};
     this.canvas.addEventListener('pointerdown',down);
     window.addEventListener('pointermove',move);window.addEventListener('pointerup',up);
     this.canvas.addEventListener('wheel',wheel,{passive:false});
@@ -209,7 +209,7 @@ export class FlightScene{
   reset(){this.model.reset();this.accum=0;this.paused=false;}
   telemetry(){return this.mode==='lab'?labCalculation(this.labParams):this.model.telemetry();}
   dispose(){
-    this.interactions.forEach(fn=>fn());this.interactions=[];
+    this.interactions.forEach(fn=>fn());this.interactions=[];this.aircraft?.dispose?.();
     if(this.resize)window.removeEventListener('resize',this.resize);
     try{this.engine?.stopRenderLoop(this.frame);this.scene?.dispose();this.engine?.dispose();}catch(e){console.warn('Scene cleanup',e);}
   }

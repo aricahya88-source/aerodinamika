@@ -23,7 +23,7 @@ export function createWorld(scene,mode='flight'){
   skyMat.setColor3('zenith',new B.Color3(.14,.41,.70));skyMat.setColor3('horizon',new B.Color3(.80,.88,.94));
   sky.material=skyMat;sky.infiniteDistance=true;sky.isPickable=false;sky.applyFog=false;
   const grass=new B.StandardMaterial('Grassy plain',scene);grass.diffuseColor=new B.Color3(.24,.42,.26);grass.specularColor=B.Color3.Black();
-  const terrain=B.MeshBuilder.CreateGround('Landscape 5km',{width:5300,height:5300,subdivisions:90,updatable:true},scene);
+  const terrain=B.MeshBuilder.CreateGround('Landscape 7km',{width:7200,height:7200,subdivisions:90,updatable:true},scene);
   const positions=terrain.getVerticesData(B.VertexBuffer.PositionKind);
   const colors=[];
   for(let i=0;i<positions.length;i+=3){
@@ -40,25 +40,25 @@ export function createWorld(scene,mode='flight'){
   asphalt.diffuseColor=B.Color3.FromHexString('#343c47');asphalt.specularColor=new B.Color3(.04,.04,.04);
   const paint=new B.StandardMaterial('White airfield markings',scene);paint.diffuseColor=new B.Color3(.92,.95,.96);paint.emissiveColor=new B.Color3(.08,.08,.08);
   const yellow=new B.StandardMaterial('Taxiway yellow',scene);yellow.diffuseColor=B.Color3.FromHexString('#eacb73');
-  const runway=B.MeshBuilder.CreateGround('Primary runway',{width:47,height:1710},scene);
-  runway.position.set(0,.105,380);runway.material=asphalt;runway.receiveShadows=true;
-  const shoulder=B.MeshBuilder.CreateGround('Taxiway apron',{width:105,height:180},scene);
-  shoulder.position.set(120,.12,-80);shoulder.material=asphalt;
+  const runway=B.MeshBuilder.CreateGround('Primary runway',{width:72,height:4350},scene);
+  runway.position.set(0,.105,300);runway.material=asphalt;runway.receiveShadows=true;
+  const shoulder=B.MeshBuilder.CreateGround('Taxiway apron',{width:155,height:240},scene);
+  shoulder.position.set(165,.12,-280);shoulder.material=asphalt;
   function stripe(name,x,z,width,depth,material=paint){
     const s=B.MeshBuilder.CreateGround(name,{width,height:depth},scene);s.position.set(x,.128,z);s.material=material;return s;
   }
-  for(let z=-440;z<1210;z+=39)stripe('Centerline runway marker',0,z,1.2,15);
-  for(let z=-465;z<1230;z+=18){stripe('Left runway shoulder',-22,z,.35,15);stripe('Right runway shoulder',22,z,.35,15);}
-  for(const z of [-436,1183])for(const sign of [-1,1])for(let i=0;i<4;i++){
+  for(let z=-1840;z<2450;z+=45)stripe('Centerline runway marker',0,z,1.2,15);
+  for(let z=-1870;z<2470;z+=25){stripe('Left runway shoulder',-35,z,.35,15);stripe('Right runway shoulder',35,z,.35,15);}
+  for(const z of [-1815,2415])for(const sign of [-1,1])for(let i=0;i<4;i++){
     stripe('Runway threshold piano-key',sign*(3+i*4),z,2.4,26);
   }
   // Aircraft runway guidance lights and taxiway strip.
   const lightsMat=new B.StandardMaterial('Runway light',scene);lightsMat.emissiveColor=new B.Color3(.62,.91,1);lightsMat.disableLighting=true;
-  for(let z=-440;z<1210;z+=70)for(const x of [-25.4,25.4]){
+  for(let z=-1840;z<2450;z+=95)for(const x of [-37.4,37.4]){
     const bulb=B.MeshBuilder.CreateSphere('Runway edge light',{diameter:.45,segments:6},scene);
     bulb.position.set(x,.35,z);bulb.material=lightsMat;
   }
-  const taxi=B.MeshBuilder.CreateGround('Taxiway guide',{width:4,height:160},scene);taxi.position.set(75,.134,-80);taxi.material=yellow;
+  const taxi=B.MeshBuilder.CreateGround('Taxiway guide',{width:5,height:240},scene);taxi.position.set(120,.134,-280);taxi.material=yellow;
   // Airport buildings.
   const hangarMat=new B.StandardMaterial('Hangar',scene);hangarMat.diffuseColor=B.Color3.FromHexString('#b9cbd2');
   const roofMat=new B.StandardMaterial('Industrial roof',scene);roofMat.diffuseColor=B.Color3.FromHexString('#4e7085');

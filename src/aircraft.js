@@ -1,206 +1,99 @@
-// Improved procedural light-aircraft mesh.
-// Still license-free and generated entirely in code.
+import {getLivery} from './livery.js';
+// A380-800 PROCEDURAL EDUCATIONAL MODEL. 1 Babylon unit = 1 meter.
+// Dimensions follow Airbus A380 factsheets; surface shapes are an approximation,
+// not a certified CAD model or an Airbus-provided 3-D asset.
 export function createAircraft(scene){
-  const B=window.BABYLON;
-  const root=new B.TransformNode('aircraftRoot',scene);
-  root.rotationQuaternion=B.Quaternion.Identity();
-  const parts={};
-
-  function mat(name,color,metal=.05,rough=.58,emissive){
-    const m=new B.PBRMaterial(name,scene);
-    m.albedoColor=B.Color3.FromHexString(color);
-    m.metallic=metal;
-    m.roughness=rough;
-    if(emissive) m.emissiveColor=B.Color3.FromHexString(emissive);
-    return m;
+ const B=window.BABYLON;
+ const root=new B.TransformNode('A380-800',scene);root.rotationQuaternion=B.Quaternion.Identity();
+ const parts={elevators:[],ailerons:[],flaps:[],engines:[],rudder:null};
+ const mat=(name,hex,metal=.12)=>{const m=new B.PBRMaterial(name,scene);m.albedoColor=B.Color3.FromHexString(hex);m.metallic=metal;m.roughness=.43;m.backFaceCulling=false;return m;};
+ const white=mat('Pearl cabin','#f0f4f7',.2),steel=mat('Alloy','#8797a9',.55),rubber=mat('Tires','#151c23'),windowMat=mat('Double deck windows','#214457'),dark=mat('Engine intakes','#1b2732'),light=mat('Wing panels','#e4ecf2');
+ const primary=mat('Livery primary','#1b6ba2'),secondary=mat('Livery secondary','#44bfc5'),tailMat=mat('Livery tail','#153b67');
+ const registerMat=mat('Registration white','#ffffff');
+ const sphere=(n,p,s,m,parent=root)=>{let o=B.MeshBuilder.CreateSphere(n,{diameter:1,segments:20},scene);o.parent=parent;o.position.set(...p);o.scaling.set(...s);o.material=m;return o;};
+ const box=(n,p,d,m,parent=root)=>{let o=B.MeshBuilder.CreateBox(n,{width:d[0],height:d[1],depth:d[2]},scene);o.parent=parent;o.position.set(...p);o.material=m;return o;};
+ const cyl=(n,p,rad,height,m,rotate=[0,0,0],parent=root)=>{let o=B.MeshBuilder.CreateCylinder(n,{diameter:rad*2,height,tessellation:24},scene);o.parent=parent;o.position.set(...p);o.rotation.set(...rotate);o.material=m;return o;};
+ // Wing meshes use swept quadrilateral sections, thickness and positive dihedral.
+ function surface(n,side,rootX,tipX,rootFore,rootBack,tipFore,tipBack,rootY,tipY,thickness,m,parent=root){
+  const xs=[side*rootX,side*tipX], corners=[[xs[0],rootY,rootFore],[xs[0],rootY,rootBack],[xs[1],tipY,tipFore],[xs[1],tipY,tipBack]];
+  const upper=corners.map(v=>[v[0],v[1]+thickness/2,v[2]]), lower=corners.map(v=>[v[0],v[1]-thickness/2,v[2]]);
+  const verts=[...upper,...lower].flat();
+  const inds=[0,1,2,1,3,2,4,6,5,5,6,7,0,4,1,1,4,5,2,3,6,3,7,6,0,2,4,2,6,4,1,5,3,3,5,7];
+  const normals=[];B.VertexData.ComputeNormals(verts,inds,normals);const mesh=new B.Mesh(n,scene),v=new B.VertexData();v.positions=verts;v.indices=inds;v.normals=normals;v.applyToMesh(mesh);mesh.parent=parent;mesh.material=m;return mesh;
+ }
+ // Longitudinal direction +Z = forward. Fuselage length 72.7 m.
+ sphere('A380 broad fuselage',[0,0,0],[7.10,7.65,69],white);
+ sphere('A380 upper deck',[0,2.3,8],[6.65,4.0,37],white);
+ sphere('Nose dome',[0,0,32.0],[6.2,6.4,9.4],white);
+ sphere('Tail taper',[0,1,-31],[4.2,4.4,11],white);
+ sphere('Belly fairing',[0,-3.2,-1],[7.4,2.5,23],light);
+ // Painted longitudinal ribbon on upper part of twin-deck fuselage.
+ for(const side of [-1,1]){
+  sphere('Color fuselage ribbon '+side,[side*3.52,1.25,9.6],[.26,.46,43.5],primary);
+  sphere('Secondary ribbon '+side,[side*3.28,.45,8.2],[.14,.20,44],secondary);
+  // Rows of upper and lower deck windows on each side.
+  for(let z=-20;z<=25;z+=1.42){
+   sphere('Lower deck window',[side*3.59,.65,z],[.08,.27,.38],windowMat);
+   if(z>-12 && z<21)sphere('Upper deck window',[side*3.35,2.65,z],[.08,.25,.34],windowMat);
   }
-
-  const paint=mat('Aircraft paint','#f4f8ff',.22,.30);
-  const accent=mat('Aircraft accent','#24679a',.28,.34);
-  const accent2=mat('Aircraft accent 2','#32bfd2',.18,.40);
-  const rubber=mat('Rubber dark','#131920',.02,.92);
-  const steel=mat('Steel','#8d9caf',.68,.33);
-  const black=mat('Charcoal','#1b2430',.08,.84);
-  const lightGrey=mat('Light grey','#dde5ee',.22,.42);
-  const redLamp=mat('Red light','#e74460',.08,.45,'#e74460');
-  const greenLamp=mat('Green light','#47e9b2',.08,.45,'#47e9b2');
-
-  const glass=new B.PBRMaterial('Cockpit glass',scene);
-  glass.albedoColor=B.Color3.FromHexString('#7fc7ef');
-  glass.reflectivityColor=new B.Color3(.75,.84,.93);
-  glass.metallic=.02;glass.roughness=.08;
-  glass.alpha=.34;glass.transparencyMode=B.Material.MATERIAL_ALPHABLEND;
-  glass.indexOfRefraction=1.48;
-
-  function sphere(name,xyz,scale,material,parent=root,segments=20){
-    const mesh=B.MeshBuilder.CreateSphere(name,{diameter:1,segments},scene);
-    mesh.parent=parent;mesh.position.set(...xyz);mesh.scaling.set(...scale);mesh.material=material;return mesh;
+ }
+ for(const side of [-1,1]){
+  const canopy=sphere('Cockpit windshield '+side,[side*1.20,1.15,33.38],[1.35,.72,.20],windowMat);canopy.rotation.y=side*.20;
+  box('Door A '+side,[side*3.53,.70,17.2],[.06,1.9,1.25],light);
+  box('Door B '+side,[side*3.53,.70,-12],[.06,1.9,1.25],light);
+ }
+ // Airbus A380 reference wingspan 79.8 m, roots and tips approximately fitted.
+ for(const side of [-1,1]){
+  surface('Primary main wing '+side,side,2.0,39.85,15,-15.5,-9,-20,0,-.3,.54,white);
+  surface('Leading edge chrome '+side,side,3,39.2,15,13.7,-9,-9.4,.21,-.06,.09,light);
+  const ail=new B.TransformNode('Aileron hinge '+side,scene);ail.parent=root;ail.position.set(side*30.8,-.28,-17.6);
+  surface('Aileron plate '+side,side,.0,7.0,1.2,-1.0,.25,-.8,0,.05,.12,primary,ail);parts.ailerons.push({pivot:ail,side});
+  const flap=new B.TransformNode('Flap hinge '+side,scene);flap.parent=root;flap.position.set(side*15.5,-.16,-12);
+  surface('High lift flap '+side,side,0,9,1.1,-2,.5,-2.7,0,0,.15,light,flap);parts.flaps.push(flap);
+  // Wingtip fences (visual approximation).
+  box('Wingtip fence '+side,[side*39.35,.55,-14.1],[.5,1.65,2.4],secondary);
+  // Two turbofans per wing, fan intake faces +Z.
+  for(const [i,x,z] of [[0,12,2.1],[1,25,-5.4]]){
+   const eng=sphere(`Engine nacelle ${side}:${i}`,[side*x,-3.10,z],[4.5,4.45,8.3],white);
+   cyl('Intake rim '+side+':'+i,[side*x,-3.12,z+3.55],2.05,.24,steel,[Math.PI/2,0,0]);
+   const intake=cyl('Fan inlet '+side+':'+i,[side*x,-3.12,z+3.69],1.72,.11,dark,[Math.PI/2,0,0]);
+   const fan=cyl('Fan disk '+side+':'+i,[side*x,-3.12,z+3.76],1.44,.09,steel,[Math.PI/2,0,0]);
+   parts.engines.push({eng,intake,fan});
+   box('Engine pylon '+side+':'+i,[side*x,-1.15,z-.8],[1.0,2.4,3.0],steel);
   }
-  function box(name,xyz,whd,material,parent=root){
-    const mesh=B.MeshBuilder.CreateBox(name,{width:whd[0],height:whd[1],depth:whd[2]},scene);
-    mesh.parent=parent;mesh.position.set(...xyz);mesh.material=material;return mesh;
-  }
-  function cyl(name,xyz,radius,height,material,rot,parent=root,tessellation=24){
-    const mesh=B.MeshBuilder.CreateCylinder(name,{diameter:radius*2,height,tessellation},scene);
-    mesh.parent=parent;mesh.position.set(...xyz);if(rot)mesh.rotation.set(...rot);mesh.material=material;return mesh;
-  }
-  function taperedBox(name,side,{span,rootZ,tipZ,y,chordRoot,chordTip,material,parent=root,rootX=.58,thickness=.18,dihedral=.16,tipSweep=.0}){
-    const x0=side*rootX;
-    const x1=side*(rootX+span);
-    const topPts=[
-      [x0,y+thickness/2,rootZ+chordRoot/2],
-      [x0,y+thickness/2,rootZ-chordRoot/2],
-      [x1,y+dihedral+thickness/2,tipZ+chordTip/2+tipSweep],
-      [x1,y+dihedral+thickness/2,tipZ-chordTip/2+tipSweep]
-    ];
-    const botPts=topPts.map(p=>[p[0],p[1]-thickness,p[2]]);
-    const positions=[...topPts.flat(),...botPts.flat()];
-    const indices=[0,2,1,1,2,3,4,5,6,5,7,6,0,4,2,2,4,6,1,3,5,3,7,5,0,1,4,1,5,4,2,6,3,3,6,7];
-    const normals=[];B.VertexData.ComputeNormals(positions,indices,normals);
-    const mesh=new B.Mesh(name,scene);
-    const data=new B.VertexData();data.positions=positions;data.indices=indices;data.normals=normals;data.applyToMesh(mesh);
-    mesh.material=material;mesh.parent=parent;return mesh;
-  }
-  function wheelAssembly({x,z,r=.38,steer=false}){
-    const legPivot=new B.TransformNode('GearLegPivot'+x+z,scene);
-    legPivot.parent=root;legPivot.position.set(x,-.84,z);
-    legPivot.rotation.z=Math.sign(x||1)*.12;
-    const leg=cyl('Gear leg',[0,-.36,0],.048,.84,steel,[0,0,0],legPivot);
-    const shock=cyl('Gear shock',[0,-.70,0],.032,.20,lightGrey,[0,0,0],legPivot);
-    const axle=box('Axle',[0,-.82,0],[.24,.045,.045],steel,legPivot);
-    const tyre=cyl('Tyre',[0,-.82,0],r,.19,rubber,[0,0,Math.PI/2],legPivot,28);
-    const hub=cyl('Hub',[0,-.82,0],r*.44,.21,steel,[0,0,Math.PI/2],legPivot,28);
-    let spat;
-    if(!steer){
-      spat=sphere('Wheel fairing',[0,-.77,.02],[r*1.05,r*.78,r*1.95],paint,legPivot,18);
-      const cut=box('Spat cut',[0,-.93,.02],[r*2.1,r*.45,r*2.2],lightGrey,legPivot);cut.isVisible=false;
-    }
-    return {legPivot,leg,shock,axle,tyre,hub,spat};
-  }
-
-  // --- Fuselage ---
-  sphere('Main fuselage',[0,.05,.2],[1.03,.96,6.3],paint);
-  sphere('Cabin bulge',[0,.46,.7],[.95,.68,2.65],paint);
-  sphere('Belly fairing',[0,-.36,.0],[.92,.54,4.8],paint);
-  sphere('Nose section',[0,.03,3.95],[.70,.68,2.00],paint);
-  sphere('Spinner mount fairing',[0,.06,4.88],[.28,.28,.52],steel);
-  sphere('Tail cone',[0,.18,-4.28],[.46,.43,2.15],paint);
-  sphere('Tail taper',[0,.36,-5.28],[.22,.23,.82],paint);
-  box('Lower accent stripe',[0,-.12,1.55],[1.52,.14,5.55],accent);
-  box('Fine aqua stripe',[0,-.03,1.76],[1.70,.05,4.7],accent2);
-  box('Nose side panel',[0,.18,3.85],[1.07,.34,1.18],accent);
-  box('Cabin roof strip',[0,.93,.38],[.46,.05,2.8],accent2);
-
-  // Cabin / windows / interior
-  sphere('Canopy glazing',[0,.70,.78],[.82,.48,2.75],glass,root,22);
-  box('Front windshield frame',[0,.86,1.95],[.10,.50,.10],paint);
-  box('Center windshield post',[0,.92,1.35],[.06,.58,.08],paint);
-  box('Rear cabin frame',[0,.68,-.12],[.08,.60,.08],paint);
-  const panel=box('Instrument panel',[0,.45,1.72],[.92,.32,.18],black);
-  panel.rotation.x=.18;
-  const glareShield=box('Glare shield',[0,.58,1.84],[.78,.08,.15],black);
-  glareShield.rotation.x=.18;
-  for(const side of [-1,1]){
-    box('Seat '+side,[side*.24,.18,.57],[.32,.54,.38],black);
-    box('Seat back '+side,[side*.24,.48,.34],[.32,.58,.12],black);
-    box('Door window '+side,[side*.78,.58,.65],[.075,.48,1.55],glass);
-    box('Rear quarter window '+side,[side*.74,.58,-.46],[.072,.38,.78],glass);
-    box('Door frame '+side,[side*.82,.17,.54],[.03,.95,1.65],paint);
-    box('Door handle '+side,[side*.85,.18,.95],[.04,.05,.10],steel);
-    box('Nose intake detail '+side,[side*.34,-.06,4.12],[.12,.10,.82],black);
-    box('Exhaust stack '+side,[side*.52,-.18,3.58],[.08,.07,.45],steel);
-  }
-
-  // --- Wings ---
-  taperedBox('Wing center fairing L',-1,{span:5.20,rootZ:.26,tipZ:-.18,y:.95,chordRoot:1.76,chordTip:1.02,material:paint,rootX:.40,thickness:.17,dihedral:.14,tipSweep:-.06});
-  taperedBox('Wing center fairing R',1,{span:5.20,rootZ:.26,tipZ:-.18,y:.95,chordRoot:1.76,chordTip:1.02,material:paint,rootX:.40,thickness:.17,dihedral:.14,tipSweep:-.06});
-  box('Wing center section',[0,.96,.02],[1.25,.16,1.55],paint);
-  box('Wing carry-through stripe',[0,1.05,-.02],[1.18,.03,1.50],accent2);
-
-  // Tail surfaces
-  taperedBox('Tailplane L',-1,{span:1.98,rootZ:-3.48,tipZ:-3.72,y:.49,chordRoot:.95,chordTip:.54,material:paint,rootX:.16,thickness:.11,dihedral:.04,tipSweep:-.03});
-  taperedBox('Tailplane R',1,{span:1.98,rootZ:-3.48,tipZ:-3.72,y:.49,chordRoot:.95,chordTip:.54,material:paint,rootX:.16,thickness:.11,dihedral:.04,tipSweep:-.03});
-
-  const fin=box('Vertical fin',[0,1.18,-3.54],[.14,1.86,1.12],paint);
-  fin.rotation.x=-.30;
-  box('Fin accent',[0,1.34,-3.66],[.16,.68,.26],accent);
-
-  // Control surfaces pivots
-  parts.elevators=[];parts.ailerons=[];parts.flaps=[];
-  const rudderPivot=new B.TransformNode('RudderPivot',scene);rudderPivot.parent=root;rudderPivot.position.set(0,1.22,-3.96);
-  const rudder=box('Rudder',[0,.28,-.06],[.10,1.05,.30],accent,rudderPivot);rudder.rotation.x=-.05;parts.rudder=rudderPivot;
-  for(const side of [-1,1]){
-    const elevPivot=new B.TransformNode('ElevatorPivot'+side,scene);elevPivot.parent=root;elevPivot.position.set(side*1.12,.54,-3.95);
-    box('Elevator '+side,[0,0,-.08],[1.45,.07,.40],accent,elevPivot);
-    parts.elevators.push(elevPivot);
-
-    const ailPivot=new B.TransformNode('AileronPivot'+side,scene);ailPivot.parent=root;ailPivot.position.set(side*3.88,1.06,-.72);
-    box('Aileron '+side,[0,0,-.08],[2.10,.06,.34],accent,ailPivot);
-    parts.ailerons.push({pivot:ailPivot,side});
-
-    const flapPivot=new B.TransformNode('FlapPivot'+side,scene);flapPivot.parent=root;flapPivot.position.set(side*1.98,1.02,-.64);
-    box('Flap '+side,[0,0,-.11],[1.70,.085,.40],lightGrey,flapPivot);
-    parts.flaps.push(flapPivot);
-
-    const strut=new B.TransformNode('WingStrut'+side,scene);strut.parent=root;strut.position.set(side*1.42,.30,.02);
-    strut.rotation.z=side*.56;strut.rotation.x=.05;
-    cyl('Strut tube',[0,.0,0],.045,1.62,steel,[0,0,0],strut);
-
-    const nav=sphere('Nav lamp '+side,[side*5.70,1.08,-.18],[.12,.11,.15],side<0?redLamp:greenLamp);
-    const tipCap=sphere('Wingtip '+side,[side*5.50,1.10,-.12],[.24,.10,.46],paint);
-    tipCap.rotationQuaternion=B.Quaternion.Identity();
-    box('Landing light '+side,[side*4.72,.96,.54],[.24,.08,.18],glass);
-  }
-
-  // Propeller group
-  const spinner=cyl('Spinner',[0,.04,5.18],.23,.56,steel,[Math.PI/2,0,0],root,28);
-  spinner.rotation.z=Math.PI/2;
-  const propellerPivot=new B.TransformNode('PropellerAxis',scene);
-  propellerPivot.parent=root;propellerPivot.position.set(0,.04,5.15);
-  for(let i=0;i<2;i++){
-    const bladePivot=new B.TransformNode('BladePivot'+i,scene);bladePivot.parent=propellerPivot;bladePivot.rotation.z=i*Math.PI;
-    const blade=box('Blade '+i,[0,1.0,0],[.14,1.92,.07],black,bladePivot);
-    blade.rotation.z=-.08;
-    const bladeTip=box('BladeTip '+i,[0,1.78,.005],[.16,.22,.08],accent2,bladePivot);
-    bladeTip.rotation.z=-.08;
-  }
-  sphere('Propeller hub',[0,0,0],[.22,.22,.22],steel,propellerPivot);
-  parts.propeller=propellerPivot;
-
-  // Landing gear
-  wheelAssembly({x:0,z:2.80,r:.29,steer:true});
-  wheelAssembly({x:-1.34,z:-1.12,r:.37});
-  wheelAssembly({x:1.34,z:-1.12,r:.37});
-
-  // Antenna and pitot tube
-  cyl('Antenna mast',[0,.98,-.75],.014,.30,black,null,root,10);
-  const pitot=box('Pitot tube',[5.18,1.01,.22],[.55,.03,.03],steel);
-  pitot.rotation.z=.08;
-
-  // Registration labels
-  const registration=new B.DynamicTexture('RegistrationTexture',{width:512,height:128},scene,false);
-  registration.hasAlpha=true;
-  registration.drawText('AT • 01',28,88,'bold 74px Arial','#eff9ff','transparent',true);
-  const textMat=new B.StandardMaterial('Registration',scene);
-  textMat.diffuseTexture=registration;textMat.opacityTexture=registration;textMat.emissiveColor=new B.Color3(.35,.70,.90);textMat.backFaceCulling=false;
-  for(const side of [-1,1]){
-    const plate=B.MeshBuilder.CreatePlane('Registration '+side,{width:1.55,height:.34},scene);
-    plate.parent=root;plate.position.set(side*.92,-.03,-1.45);plate.rotation.y=side>0?Math.PI/2:-Math.PI/2;plate.material=textMat;
-  }
-
-  // Gentle smoothing via child mesh settings
-  root.getChildMeshes().forEach((mesh)=>{
-    mesh.receiveShadows=true;
-    mesh.isPickable=false;
-  });
-
-  function update(control,dt){
-    parts.propeller.rotation.z+=dt*(10+control.throttle*175);
-    parts.elevators.forEach((p)=>{p.rotation.x=-control.pitch*.32;});
-    parts.ailerons.forEach(({pivot,side})=>{pivot.rotation.x=side*control.roll*.30;});
-    parts.flaps.forEach((p)=>{p.rotation.x=-control.flap*Math.PI/180*.85;});
-    parts.rudder.rotation.y=control.yaw*.32;
-  }
-
-  return {root,update,parts};
+  surface('Horizontal tail '+side,side,1.2,14.8,-24.5,-35.6,-32.2,-37.4,2.0,2.7,.36,white);
+  const elev=new B.TransformNode('Elevator hinge '+side,scene);elev.parent=root;elev.position.set(side*7.5,2.1,-35);
+  surface('Elevator '+side,side,0,6,.7,-1.45,-.4,-1.4,0,.05,.1,primary,elev);parts.elevators.push(elev);
+ }
+ // Vertical stabilizer 24.1 m overall from ground when gear deployed (illustrative).
+ const vtail=surface('Vertical tailplane',1,0.0,.16,-25,-36,-34,-39,1,16,.46,tailMat);
+ // Tall swept fin custom side-wall polygon for accurate fin silhouette.
+ const finShape=new B.Mesh('A380 main fin',scene);
+ const vs=[-.25,2,-26,.25,2,-26,-.15,15.7,-34,.15,15.7,-34,-.25,2,-37,.25,2,-37];
+ const face=[0,2,4,1,5,3,0,1,2,1,3,2,2,3,4,3,5,4,4,5,0,5,1,0];
+ const norms=[];B.VertexData.ComputeNormals(vs,face,norms);const vd=new B.VertexData();vd.positions=vs;vd.indices=face;vd.normals=norms;vd.applyToMesh(finShape);finShape.material=tailMat;finShape.parent=root;
+ const rud=new B.TransformNode('Rudder hinge',scene);rud.parent=root;rud.position.set(0,9,-36);box('Rudder surface',[0,0,-1.8],[.30,8,2.4],primary,rud);parts.rudder=rud;
+ // Landing gear: nose + four main bodies, 22 wheels diagrammatic approximation.
+ function wheel(x,z,y,r){const stem=cyl('Hydraulic strut',[x,y+2,z],.16,4,steel);cyl('Wheel tire',[x,y,z],r,.65,rubber,[0,0,Math.PI/2]);cyl('Wheel hub',[x,y,z],r*.42,.70,steel,[0,0,Math.PI/2]);}
+ for(const side of [-1,1]){for(const z of [-10,-8,-6,-4])wheel(side*8.4,z,-8.0,1.0);for(const z of [-13,-11,-9,-7,-5,-3])wheel(side*3.4,z,-8.0,1.0);wheel(side*1.1,27,-8.0,.9);}
+ // Registration as dynamic texture, no proprietary external models.
+ const tex=new B.DynamicTexture('A380 nameplate',{width:1024,height:256},scene,false);tex.hasAlpha=true;
+ const textMat=new B.StandardMaterial('Livery text',scene);textMat.diffuseTexture=tex;textMat.opacityTexture=tex;textMat.backFaceCulling=false;textMat.emissiveColor=new B.Color3(.1,.15,.20);
+ for(const side of [-1,1]){const plane=B.MeshBuilder.CreatePlane('Livery lettering '+side,{width:10,height:2.45},scene);plane.parent=root;plane.position.set(side*3.62,0.15,3.5);plane.rotation.y=side>0?Math.PI/2:-Math.PI/2;plane.material=textMat;}
+ // Optional custom logo is displayed on both sides with the same data URL
+ // saved by the papercraft editor. Its UV placement is illustrative, not a true
+ // one-to-one unwrapping of the original papercraft parts.
+ const logoMat=new B.StandardMaterial('Custom logo',scene);logoMat.backFaceCulling=false;logoMat.diffuseColor=B.Color3.White();logoMat.emissiveColor=new B.Color3(.18,.18,.18);logoMat.useAlphaFromDiffuseTexture=true;
+ const logoPlates=[];
+ for(const side of [-1,1]){const p=B.MeshBuilder.CreatePlane('Custom livery logo '+side,{width:6.8,height:3.3},scene);p.parent=root;p.position.set(side*3.66,.48,17.4);p.rotation.y=side>0?Math.PI/2:-Math.PI/2;p.material=logoMat;logoPlates.push(p);}
+ let currentLogo='';
+ function applyLivery(l){const B=window.BABYLON;primary.albedoColor=B.Color3.FromHexString(l.primary);secondary.albedoColor=B.Color3.FromHexString(l.secondary);tailMat.albedoColor=B.Color3.FromHexString(l.tail);tex.getContext().clearRect(0,0,1024,256);tex.drawText(l.name.toUpperCase().slice(0,22),22,134,'bold 110px Arial','#ffffff','transparent',true);tex.update();
+  if(currentLogo!==l.logoData){currentLogo=l.logoData;logoMat.diffuseTexture?.dispose();logoMat.diffuseTexture=l.logoData?new B.Texture(l.logoData,scene,false,true,B.Texture.TRILINEAR_SAMPLINGMODE):null;logoPlates.forEach(p=>p.isVisible=!!l.logoData);}
+ }
+ applyLivery(getLivery());
+ const onChange=e=>applyLivery(e.detail);window.addEventListener('aerolab-livery',onChange);
+ const observer=e=>{if(e.key==='aerolab.a380.livery.v1')applyLivery(getLivery());};window.addEventListener('storage',observer);
+ root.getChildMeshes().forEach(m=>{m.receiveShadows=true;m.isPickable=false;});
+ function update(control,dt){for(const o of parts.engines)o.fan.rotation.z+=dt*(2+control.throttle*18);parts.elevators.forEach(p=>p.rotation.x=-control.pitch*.18);parts.ailerons.forEach(({pivot,side})=>pivot.rotation.x=side*control.roll*.16);parts.flaps.forEach(p=>p.rotation.x=-control.flap*Math.PI/180*.55);parts.rudder.rotation.y=control.yaw*.16;}
+ return {root,parts,update,applyLivery,dispose(){window.removeEventListener('storage',observer);window.removeEventListener('aerolab-livery',onChange);}};
 }

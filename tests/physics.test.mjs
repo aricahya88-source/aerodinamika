@@ -40,13 +40,13 @@ test('quaternion rotation and inverse conserve vector',()=>{
 test('aircraft accelerates from rest under throttle',()=>{
   const m=new FlightModel();m.setControl('throttle',1);
   for(let i=0;i<6*60;i++)m.step(1/60);
-  assert.ok(m.velocity.z>11);assert.ok(m.position.z>-340);
+  assert.ok(m.velocity.z>11);assert.ok(m.position.z>-1670);
   assert.ok(m.onGround);
 });
 test('aircraft can rotate and take off with elevator',()=>{
   const m=new FlightModel();m.setControl('throttle',1);
-  for(let i=0;i<25*60;i++){
-    if(m.last.airspeed>26)m.setControl('pitch',.6);
+  for(let i=0;i<65*60;i++){
+    if(m.last.airspeed>70)m.setControl('pitch',.65);
     m.step(1/60);
     if(!m.onGround)break;
   }
@@ -56,5 +56,5 @@ test('aircraft can rotate and take off with elevator',()=>{
 test('reset restores initial state and no wind',()=>{
   const m=new FlightModel();m.setControl('throttle',1);m.setWeather({turbulence:4,windSpeed:10});
   for(let i=0;i<300;i++)m.step(1/60);
-  m.reset();eq(m.position.z,-370);eq(m.time,0);assert.equal(m.onGround,true);eq(m.windSpeed,0);
+  m.reset();eq(m.position.z,-1690);eq(m.time,0);assert.equal(m.onGround,true);eq(m.windSpeed,0);
 });

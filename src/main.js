@@ -1,4 +1,5 @@
 import {FlightScene} from './scene.js';
+import {papercraftPage,initPapercraft} from './papercraft.js';
 import {AudioEngine} from './audio.js';
 import {LABS,DEFAULT_LAB,labCalculation} from './physics.js';
 import {plotLab} from './chart.js';
@@ -19,16 +20,18 @@ function render(){
   if(url==='/simulator')route='simulator';
   else if(url==='/laboratorium')route='laboratorium';
   else if(parts[0]==='laboratorium'&&parts[1]){lab=LABS.find(l=>l.id===parts[1]);route=lab?'experiment':'404';}
+  else if(url==='/papercraft')route='papercraft';
   else if(url==='/materi')route='materi';
   else if(url==='/panduan')route='panduan';
   else if(url==='/hasil')route='hasil';
   else if(url!=='/')route='404';
-  const templates={home:homePage,simulator:simulatorPage,laboratorium:labsPage,materi:theoryPage,panduan:guidePage,hasil:resultsPage};
+  const templates={home:homePage,simulator:simulatorPage,laboratorium:labsPage,papercraft:papercraftPage,materi:theoryPage,panduan:guidePage,hasil:resultsPage};
   page.innerHTML=route==='experiment'?experimentPage(lab):route==='404'?`<section class="container page-section"><h1>Halaman tidak ditemukan</h1><p>Alamat yang dibuka tidak tersedia.</p><a data-link href="/" class="btn btn-primary">Kembali ke beranda</a></section>`:templates[route]();
   document.querySelectorAll('[data-nav]').forEach(a=>a.classList.toggle('active',a.dataset.nav===(route==='experiment'?'laboratorium':route)));
   $('mainNav').classList.remove('open');
-  document.title=(route==='experiment'?lab.title:{simulator:'Flight Simulator 3D',laboratorium:'Laboratorium Fluida',materi:'Materi Aerodinamika',panduan:'Panduan',hasil:'Riwayat Praktikum'}[route]||'Beranda')+' | Aerodynamics Flight Lab';
+  document.title=(route==='experiment'?lab.title:{simulator:'Flight Simulator 3D',laboratorium:'Laboratorium Fluida',papercraft:'A380 Papercraft Studio',materi:'Materi Aerodinamika',panduan:'Panduan',hasil:'Riwayat Praktikum'}[route]||'Beranda')+' | Aerodynamics Flight Lab';
   if(route==='simulator')initSimulator();
+  if(route==='papercraft'){initPapercraft({listen,notice});void attachScene('papercraftCanvas',{mode:'lab'}).then(scene=>scene?.setForces(false));}
   if(route==='experiment')initExperiment(lab);
   if(route==='hasil')initResults();
 }
@@ -101,12 +104,12 @@ async function initSimulator(){
   for(const id of ['weatherSelect','windSpeed','windDirection','turbulence'])listen(sel(id),'input',applyWeather);
   listen(sel('cameraButton'),'click',cycleCamera);
   listen(sel('qualitySelect'),'change',e=>{s.setQuality(e.target.value);notice('Kualitas grafis: '+e.target.value);});
-  s.setQuality('medium');
+  s.setQuality('medium');sel('flapLabel').textContent='15°';
   listen(sel('audioButton'),'click',async()=>{try{if(sound.active){await sound.stop();sel('audioButton').textContent='♫ SUARA OFF';}else{await sound.start();sel('audioButton').textContent='♫ SUARA ON';}}catch(e){notice('Audio tidak dapat diaktifkan: '+e.message);}});
   listen(sel('flapButton'),'click',cycleFlap);
   listen(sel('vectorButton'),'click',toggleVectors);
   listen(sel('pauseButton'),'click',togglePause);
-  listen(sel('resetButton'),'click',()=>{s.reset();setThrottle(35);sel('flapLabel').textContent='0°';sel('pauseButton').textContent='Ⅱ PAUSE';applyWeather();notice('Pesawat kembali ke landasan');});
+  listen(sel('resetButton'),'click',()=>{s.reset();setThrottle(35);sel('flapLabel').textContent='15°';sel('pauseButton').textContent='Ⅱ PAUSE';applyWeather();notice('Pesawat kembali ke landasan');});
   for(const el of document.querySelectorAll('[data-hold]')){
     const key=el.dataset.hold;
     listen(el,'pointerdown',e=>{e.preventDefault();pressed.add(key);liveControl();el.classList.add('pressed');el.setPointerCapture?.(e.pointerId);});
@@ -122,7 +125,7 @@ async function initSimulator(){
     const isFirst=!pressed.has(key);pressed.add(key);liveControl();
     if(!isFirst)return;
     if(key==='f')cycleFlap();if(key==='c')cycleCamera();if(key==='p')togglePause();if(key==='v')toggleVectors();
-    if(key==='r'){s.reset();setThrottle(35);sel('flapLabel').textContent='0°';applyWeather();notice('Pesawat di-reset');}
+    if(key==='r'){s.reset();setThrottle(35);sel('flapLabel').textContent='15°';applyWeather();notice('Pesawat di-reset');}
   });
   listen(window,'keyup',e=>{pressed.delete(e.key.toLowerCase());liveControl();});
   listen(window,'blur',()=>{pressed.clear();liveControl();});
@@ -133,7 +136,7 @@ async function initSimulator(){
   cleanup.push(()=>clearInterval(interval));
   s.onTelemetry=t=>{
     sound.update(t);
-    const data={airspeed:format(t.speedKmh,0),altitude:format(t.altitude,0),heading:format(t.heading,0).padStart(3,'0'),vertical:format(t.verticalSpeed,1),aoa:format(t.alpha,1),pitch:format(t.pitch,1),bank:format(t.bank,1),lift:format(t.lift/1000,2),drag:format(t.drag/1000,2),load:format(t.loadFactor,2)+' g'};
+    const data={airspeed:format(t.speedKmh,0),mach:format(t.mach,2),thrust:format(t.thrust/1000,0),altitude:format(t.altitude,0),heading:format(t.heading,0).padStart(3,'0'),vertical:format(t.verticalSpeed,1),aoa:format(t.alpha,1),pitch:format(t.pitch,1),bank:format(t.bank,1),lift:format(t.lift/1000,2),drag:format(t.drag/1000,2),load:format(t.loadFactor,2)+' g'};
     for(const [key,value]of Object.entries(data))document.querySelectorAll(`[data-t="${key}"]`).forEach(el=>el.textContent=value);
     const alert=sel('flightAlert');if(!alert)return;
     if(t.stall){alert.textContent='⚠ PERINGATAN: STALL — KURANGI SUDUT SERANG';alert.classList.add('warning');}
@@ -145,11 +148,11 @@ async function initSimulator(){
   setThrottle(35);
 }
 const PARAM_CONTROLS={
-  speed:{name:'Kecepatan terhadap tanah',unit:'m/s',min:5,max:75,step:1},
+  speed:{name:'Kecepatan terhadap tanah',unit:'m/s',min:0,max:270,step:5},
   density:{name:'Massa jenis udara',unit:'kg/m³',min:.6,max:1.3,step:.025},
   alpha:{name:'Sudut serang (AoA)',unit:'°',min:-12,max:30,step:1},
-  area:{name:'Luas sayap',unit:'m²',min:10,max:28,step:.5},
-  span:{name:'Bentang sayap',unit:'m',min:8,max:16,step:.25},
+  area:{name:'Luas sayap',unit:'m²',min:600,max:1000,step:5},
+  span:{name:'Bentang sayap',unit:'m',min:70,max:85,step:.2},
   flap:{name:'Sudut flap',unit:'°',min:0,max:30,step:5},
   wind:{name:'Angin depan (+) / belakang (−)',unit:'m/s',min:-18,max:18,step:1},
   throttle:{name:'Tenaga mesin',unit:'%',min:0,max:100,step:5},
